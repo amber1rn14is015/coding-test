@@ -1,0 +1,47 @@
+1. Computational Inefficiencies
+
+    Unnecessary Dependency in useMemo: The useMemo hook for sortedBalances includes prices in its dependency array ([balances, prices]). However, the logic inside the hook only filters and sorts based on balances. It does not use prices.
+    The heavy sorting and filtering logic re-runs every time prices change (which is likely frequent in a crypto app), even if the wallet balances haven't changed. This is a significant performance waste.
+
+    Unused Computation: The code calculates formattedBalances by mapping over sortedBalances. However, this variable is never used. The subsequent rows variable maps over sortedBalances again. The browser iterates over the array to format strings, allocates memory for the new array, and then immediately ignores it.
+
+    Function Recreation (getPriority): The getPriority function is defined inside the component. This function is recreated in memory on every single render cycle. Since it does not rely on any component state or props (it is a pure helper function), it should be moved outside the component scope or wrapped in useCallback (though moving it out is better).
+
+2. Anti-Patterns & Code Quality Issues
+
+    If using React.FC<Props>, no need to use (props: Props). Use any one.
+
+    Using Array Index as key: In the rows map, key={index} is used. React uses keys to identify which items have changed, added, or removed. Since this list is sorted, the order of items can change. Using the index means that if the list order changes, React may incorrectly reuse DOM elements or internal state, leading to rendering bugs and performance hits. Use a unique identifier, such as balance.currency.
+
+    Usage of any: The getPriority function accepts blockchain: any. This defeats the purpose of using TypeScript and loses type safety.
+
+    Prop Drilling / Spreading: <div {...rest}> spreads unknown props onto a div. While sometimes acceptable, in a specific WalletPage component, it risks passing invalid HTML attributes to the DOM if BoxProps contains non-standard attributes.
+
+3. Logic & Functional Errors
+
+    Undefined Variable (lhsPriority): In the filter logic: if (lhsPriority > -99). lhsPriority is not defined anywhere in that scope. The variable defined just before is balancePriority. This would throw a ReferenceError and crash the app at runtime.
+
+    Incorrect Filter Logic: The filter currently returns true if balance.amount <= 0. Usually, a wallet page displays balances that have money (amount > 0). The current logic implies it only displays empty wallets or wallets with negative balances. The nested if structure returns false implicitly for cases where lhsPriority > -99 but amount > 0, which is likely the unintended behavior.
+
+    Sorting Mutability: The .sort() method in JavaScript mutates the array in place. While filter returns a new array (so balances prop isn't mutated), it's generally safer in React patterns to treat arrays as immutable or be explicit about the copy.
+
+    Missing Type Definition: The WalletBalance interface does not include the blockchain property, yet the code attempts to access balance.blockchain.
+
+
+Summary of Improvements in Refactored code:
+
+1. Fixed Logic: Corrected lhsPriority to balancePriority and flipped the logic to show positive balances (amount > 0).
+
+2. Performance: Removed prices from useMemo dependencies and moved getPriority outside the component.
+
+3. Type Safety: Added blockchain to the interface and removed any.
+
+4. React Best Practices: Used balance.currency as the key instead of the array index.
+
+5. Clean Code: Removed the unused formattedBalances array and streamlined the row generation.
+
+
+NOTE: original-code.tsx is the code provided in the question. refactored-code.tsx is the refactored code by me after analysis. Word Wrap this file to get better view and readability.
+
+
+
